@@ -1,0 +1,102 @@
+{
+  "epic": {
+    "title": "Implement Admin Import/Export Page",
+    "description": "Create a tabbed interface with CSV upload, import progress tracking, and CSV export with filters for the admin dashboard"
+  },
+  "subtasks": [
+    {
+      "title": "Create shared types and interfaces for Import/Export",
+      "description": "Define TypeScript interfaces for CSV import/export data structures, progress tracking types, and filter options to ensure type safety across components",
+      "files": [
+        "/home/ubuntu/rovrs/admin/src/types/importExport.ts"
+      ],
+      "dependencies": [],
+      "estimated_complexity": 2
+    },
+    {
+      "title": "Create CSVUploader component",
+      "description": "Build a reusable CSV uploader component with drag-and-drop support, file validation, and progress display for import operations",
+      "files": [
+        "/home/ubuntu/rovrs/admin/src/components/CSVUploader.tsx",
+        "/home/ubuntu/rovrs/admin/__tests__/CSVUploader.test.tsx"
+      ],
+      "dependencies": [0],
+      "estimated_complexity": 3
+    },
+    {
+      "title": "Create ImportProgress component",
+      "description": "Develop a progress tracking component that displays real-time import status, success/error counts, and allows cancellation of ongoing imports",
+      "files": [
+        "/home/ubuntu/rovrs/admin/src/components/ImportProgress.tsx",
+        "/home/ubuntu/rovrs/admin/__tests__/ImportProgress.test.tsx"
+      ],
+      "dependencies": [0],
+      "estimated_complexity": 3
+    },
+    {
+      "title": "Create ExportFilters component",
+      "description": "Build a filter component with date range, status, and search options for CSV exports with applied filters preview",
+      "files": [
+        "/home/ubuntu/rovrs/admin/src/components/ExportFilters.tsx",
+        "/home/ubuntu/rovrs/admin/__tests__/ExportFilters.test.tsx"
+      ],
+      "dependencies": [0],
+      "estimated_complexity": 2
+    },
+    {
+      "title": "Create API service for import/export operations",
+      "description": "Implement API service functions for CSV upload, import status polling, and CSV export with proper error handling and progress tracking",
+      "files": [
+        "/home/ubuntu/rovrs/admin/src/api/importExport.ts"
+      ],
+      "dependencies": [],
+      "estimated_complexity": 3
+    },
+    {
+      "title": "Create main ImportExport page with tabbed interface",
+      "description": "Build the main ImportExport.tsx page component with tabs for Import and Export sections, integrating all supporting components",
+      "files": [
+        "/home/ubuntu/rovrs/admin/src/pages/ImportExport.tsx",
+        "/home/ubuntu/rovrs/admin/__tests__/ImportExport.test.tsx"
+      ],
+      "dependencies": [1, 2, 3, 4, 5],
+      "estimated_complexity": 4
+    },
+    {
+      "title": "Update router configuration",
+      "description": "Add ImportExport route to the admin router and update navigation to include the new page",
+      "files": [
+        "/home/ubuntu/rovrs/admin/src/router.tsx"
+      ],
+      "dependencies": [6],
+      "estimated_complexity": 1
+    },
+    {
+      "title": "Implement CSV import API endpoint",
+      "description": "Create Cloudflare Worker API endpoint for handling CSV uploads with validation, parsing, and database insertion",
+      "files": [
+        "/home/ubuntu/rovrs/admin/functions/api/import/index.ts"
+      ],
+      "dependencies": [],
+      "estimated_complexity": 4
+    },
+    {
+      "title": "Implement CSV export API endpoint",
+      "description": "Create Cloudflare Worker API endpoint for generating CSV exports with filter support and proper response headers",
+      "files": [
+        "/home/ubuntu/rovrs/admin/functions/api/export/index.ts"
+      ],
+      "dependencies": [],
+      "estimated_complexity": 4
+    },
+    {
+      "title": "Integration testing and final verification",
+      "description": "Perform end-to-end testing of the complete import/export flow, including file upload, progress tracking, export with filters, and error scenarios",
+      "files": [
+        "/home/ubuntu/rovrs/admin/__tests__/import-export-integration.test.tsx"
+      ],
+      "dependencies": [6, 7, 8, 9],
+      "estimated_complexity": 3
+    }
+  ]
+}

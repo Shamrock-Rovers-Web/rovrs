@@ -1,0 +1,89 @@
+name: Deploy
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+  migrate:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply D1 migrations
+        run: |
+          npx wrangler d1 execute rovrs --file=./migrations/0001_initial_schema.sql
+          npx wrangler d1 execute rovrs --file=./migrations/0002_add_rate_limits.sql
+          npx wrangler d1 execute rovrs --file=./migrations/0003_add_variants_support.sql
+          npx wrangler d1 execute rovrs --file=./migrations/0004_add_import_jobs.sql
+          npx wrangler d1 execute rovrs --file=./migrations/0004_add_settings.sql
+
+  deploy-redirect:
+    needs: [test, migrate]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Deploy redirect worker
+        run: npm run deploy:packages
+
+  deploy-admin:
+    needs: [test, migrate]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build admin dashboard
+        run: npm run build
+
+      - name: Deploy admin pages
+        run: npm run pages:deploy

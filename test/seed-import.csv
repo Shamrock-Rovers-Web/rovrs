@@ -1,0 +1,4 @@
+slug,destination_url,title,campaign,channel,owner,expires_at
+test-import-1,https://example.com,Test Import 1,test1,Tickets,bill,
+test-import-2,https://google.com,Test Import 2,test2,Instagram,social,
+test-import-3,https://facebook.com,Test Import 3,test3,Facebook,marketing,2024-12-31

@@ -1,0 +1,37 @@
+{
+  "name": "rovrs",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Shamrock Rovers branded link shortener",
+  "workspaces": [
+    "packages/*",
+    "admin"
+  ],
+  "scripts": {
+    "dev": "npm run dev:packages",
+    "dev:packages": "npm run dev:redirect-worker",
+    "dev:admin": "npm run dev:admin",
+    "build": "npm run build:packages && npm run build:admin",
+    "build:packages": "npm run build:redirect-worker",
+    "build:admin": "tsc && vite build",
+    "deploy": "npm run deploy:packages && npm run deploy:admin",
+    "deploy:packages": "npm run deploy:redirect-worker",
+    "deploy:admin": "wrangler pages deploy admin --project-name rovrs-admin",
+    "pages:deploy": "npm run build && wrangler pages deploy admin --project-name rovrs-admin",
+    "test": "npm test",
+    "lint": "npm run lint:packages && npm run lint:admin",
+    "lint:packages": "npm run lint:redirect-worker",
+    "lint:admin": "npm run lint:admin",
+    "test:packages": "npm run test:redirect-worker",
+    "test:admin": "npm run test:admin",
+    "test:acceptance": "playwright test"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260507.1",
+    "@playwright/test": "^1.59.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "jsdom": "^29.1.1",
+    "typescript": "^5.7.0"
+  }
+}

@@ -1,0 +1,27 @@
+name = "rovrs-archival-worker"
+main = "dist/index.js"
+compatibility_date = "2023-12-01"
+
+[env.production]
+vars = { ENVIRONMENT = "production" }
+
+[env.staging]
+vars = { ENVIRONMENT = "staging" }
+
+[[env.production.kv_namespaces]]
+binding = "KV_LINKS"
+id = "your-kv-namespace-id"
+
+[[env.staging.kv_namespaces]]
+binding = "KV_LINKS"
+id = "your-staging-kv-id"
+
+[env.production.durable_objects]
+bindings = [
+  { name = "ARCHIVAL_QUEUE", class_name = "ArchivalQueue" }
+]
+
+[env.staging.durable_objects]
+bindings = [
+  { name = "ARCHIVAL_QUEUE", class_name = "ArchivalQueue" }
+]

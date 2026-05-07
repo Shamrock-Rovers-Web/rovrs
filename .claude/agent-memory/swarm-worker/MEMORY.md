@@ -1,0 +1,3 @@
+- [Offsite Preview Implementation](project_offsite-preview.md) — Learnings from implementing external domain preview page with mobile optimization, XSS protection, and Shamrock Rovers branding
+- [CI/CD Pipeline Implementation](project_ci-cdpipeline.md) — GitHub Actions workflows for testing, migrations, and deployment of rov.rs link shortener
+- [QR Code Generation Implementation](project_qr-implementation.md) — Complete QR code generation page with PNG/PDF export, expiry warnings, and copy functionality

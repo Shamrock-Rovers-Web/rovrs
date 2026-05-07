@@ -1,0 +1,26 @@
+name = "rovrs-admin"
+pages_build_output_dir = "./dist"
+compatibility_date = "2023-12-01"
+
+[env.production]
+vars = { ENVIRONMENT = "production" }
+
+[env.staging]
+vars = { ENVIRONMENT = "staging" }
+
+[env.production]
+[env.production.kv_namespaces]
+binding = "KV_LINKS"
+id = "your-kv-namespace-id"
+
+[env.production.kv_namespaces]
+binding = "KV_CLICK_EVENTS"
+id = "your-click-events-kv-id"
+
+[env.staging.kv_namespaces]
+binding = "KV_LINKS"
+id = "your-staging-kv-id"
+
+[env.staging.kv_namespaces]
+binding = "KV_CLICK_EVENTS"
+id = "your-staging-click-events-kv-id"

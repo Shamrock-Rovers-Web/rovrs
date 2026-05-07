@@ -1,0 +1,14 @@
+{
+  "name": "@rovrs/queue-consumer",
+  "version": "1.0.0",
+  "description": "Queue consumer for processing click events in rov.rs",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "vitest",
+    "build": "wrangler publish"
+  },
+  "devDependencies": {
+    "vitest": "^1.0.0",
+    "@cloudflare/vitest-pool-workers": "^0.1.0"
+  }
+}
