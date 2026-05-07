@@ -1,6 +1,82 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { validateSlug, validateDestinationURL, validateLinkInput, LinkCreateInput, CHANNELS, CAMPAIGNS } from '@rovrs/shared';
+
+const CHANNELS = ['Tickets', 'Instagram', 'Facebook', 'X/Twitter', 'TikTok', 'LinkedIn', 'QR code', 'Email', 'Sponsor', 'Matchday', 'Other'];
+
+interface LinkCreateInput {
+  slug: string;
+  destination_url: string;
+  title?: string;
+  campaign?: string;
+  channel?: string;
+  owner?: string;
+  sponsor?: string;
+  opponent?: string;
+  competition?: string;
+  match_date?: string;
+  home_away?: 'home' | 'away';
+  expires_at?: string;
+  notes?: string;
+}
+
+const validateSlug = (slug: string): { message: string } | null => {
+  if (!slug || slug.length < 2 || slug.length > 50) {
+    return { message: 'Slug must be between 2 and 50 characters' };
+  }
+  if (!/^[a-z0-9-]+$/.test(slug)) {
+    return { message: 'Slug must contain only lowercase letters, numbers, and hyphens' };
+  }
+  return null;
+};
+
+const isValidUrl = (url: string): boolean => {
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const validateDestinationURL = (url: string): { message: string } | null => {
+  if (!url) {
+    return { message: 'Destination URL is required' };
+  }
+  if (!isValidUrl(url)) {
+    return { message: 'Please enter a valid URL' };
+  }
+  if (url.startsWith('javascript:') || url.startsWith('data:') || url.startsWith('file:') || url.startsWith('ftp:')) {
+    return { message: 'Blocked URL protocol' };
+  }
+  if (url.includes('localhost') || url.includes('127.0.0.1')) {
+    return { message: 'Localhost URLs are not allowed' };
+  }
+  return null;
+};
+
+const validateLinkInput = (data: LinkCreateInput): Array<{ field: string; message: string }> => {
+  const errors: Array<{ field: string; message: string }> = [];
+
+  if (!data.slug) {
+    errors.push({ field: 'slug', message: 'Slug is required' });
+  } else {
+    const slugError = validateSlug(data.slug);
+    if (slugError) {
+      errors.push({ field: 'slug', message: slugError.message });
+    }
+  }
+
+  if (!data.destination_url) {
+    errors.push({ field: 'destination_url', message: 'Destination URL is required' });
+  } else {
+    const urlError = validateDestinationURL(data.destination_url);
+    if (urlError) {
+      errors.push({ field: 'destination_url', message: urlError.message });
+    }
+  }
+
+  return errors;
+};
 
 interface FormState extends LinkCreateInput {
   errors: Record<string, string>;

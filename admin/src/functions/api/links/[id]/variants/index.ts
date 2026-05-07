@@ -2,7 +2,21 @@ import { Context, Hono } from 'hono';
 import { sql } from 'drizzle-orm';
 import { eq, and, isNull, ne } from 'drizzle-orm/expressions';
 import { links, variantGenerations } from '../../db';
-import { SOCIAL_VARIANT_SUFFIX_MAP, SOCIAL_PLATFORM_UTM_SOURCE_MAP } from '@rovrs/shared';
+const SOCIAL_VARIANT_SUFFIX_MAP = {
+  'instagram': '-ig',
+  'facebook': '-fb',
+  'twitter': '-tw',
+  'tiktok': '-tt',
+  'linkedin': '-li'
+};
+
+const SOCIAL_PLATFORM_UTM_SOURCE_MAP = {
+  'instagram': 'instagram',
+  'facebook': 'facebook',
+  'twitter': 'twitter',
+  'tiktok': 'tiktok',
+  'linkedin': 'linkedin'
+};
 import { applyRateLimit } from '../../rate-limit';
 
 const app = new Hono();

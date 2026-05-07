@@ -5,7 +5,7 @@ import { RecentLinks } from '../components/RecentLinks';
 import { TopLinks } from '../components/TopLinks';
 import { useResponsive } from '../hooks/useResponsive';
 
-export function Dashboard() {
+export default function Dashboard() {
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [refreshing, setRefreshing] = useState(false);
   const { isMobile } = useResponsive();

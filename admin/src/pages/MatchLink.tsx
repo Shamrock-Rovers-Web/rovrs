@@ -1,6 +1,60 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { validateDestinationURL, validateLinkInput, LinkCreateInput, CHANNELS } from '@rovrs/shared';
+
+const CHANNELS = ['Tickets', 'Instagram', 'Facebook', 'X/Twitter', 'TikTok', 'LinkedIn', 'QR code', 'Email', 'Sponsor', 'Matchday', 'Other'];
+
+interface LinkCreateInput {
+  slug: string;
+  destination_url: string;
+  title?: string;
+  campaign?: string;
+  channel?: string;
+  owner?: string;
+  sponsor?: string;
+  opponent?: string;
+  competition?: string;
+  match_date?: string;
+  home_away?: 'home' | 'away';
+  expires_at?: string;
+  notes?: string;
+}
+
+const validateDestinationURL = (url: string): { message: string } | null => {
+  if (!url) {
+    return { message: 'Destination URL is required' };
+  }
+  try {
+    new URL(url);
+    if (url.startsWith('javascript:') || url.startsWith('data:') || url.startsWith('file:') || url.startsWith('ftp:')) {
+      return { message: 'Blocked URL protocol' };
+    }
+    if (url.includes('localhost') || url.includes('127.0.0.1')) {
+      return { message: 'Localhost URLs are not allowed' };
+    }
+  } catch {
+    return { message: 'Please enter a valid URL' };
+  }
+  return null;
+};
+
+const validateLinkInput = (data: LinkCreateInput): Array<{ field: string; message: string }> => {
+  const errors: Array<{ field: string; message: string }> = [];
+
+  if (!data.slug) {
+    errors.push({ field: 'slug', message: 'Slug is required' });
+  }
+
+  if (!data.destination_url) {
+    errors.push({ field: 'destination_url', message: 'Destination URL is required' });
+  } else {
+    const urlError = validateDestinationURL(data.destination_url);
+    if (urlError) {
+      errors.push({ field: 'destination_url', message: urlError.message });
+    }
+  }
+
+  return errors;
+};
 
 interface FormState extends LinkCreateInput {
   errors: Record<string, string>;

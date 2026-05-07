@@ -1,6 +1,32 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { validateDestinationURL, generateSlug } from '@rovrs/shared';
+
+const generateSlug = (): string => {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < 6; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
+
+const validateDestinationURL = (url: string): { message: string } | null => {
+  if (!url) {
+    return { message: 'Destination URL is required' };
+  }
+  try {
+    new URL(url);
+    if (url.startsWith('javascript:') || url.startsWith('data:') || url.startsWith('file:') || url.startsWith('ftp:')) {
+      return { message: 'Blocked URL protocol' };
+    }
+    if (url.includes('localhost') || url.includes('127.0.0.1')) {
+      return { message: 'Localhost URLs are not allowed' };
+    }
+  } catch {
+    return { message: 'Please enter a valid URL' };
+  }
+  return null;
+};
 
 interface QuickCreateState {
   destination_url: string;

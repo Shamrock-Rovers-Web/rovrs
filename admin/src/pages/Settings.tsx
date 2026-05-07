@@ -3,7 +3,15 @@ import { api } from '../api';
 import UserList from '../components/UserList';
 import SlugBlocklistEditor from '../components/SlugBlocklistEditor';
 import ProtectedSlugsEditor from '../components/ProtectedSlugsEditor';
-import type { User } from '@rovrs/shared';
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 const Settings = () => {
   const [users, setUsers] = useState<User[]>([]);

@@ -1,4 +1,16 @@
-import type { Link, ClickEvent } from '@rovrs/shared';
+interface Link {
+  slug: string;
+  destination_url: string;
+  title?: string;
+  sponsor?: string;
+}
+
+interface ClickEvent {
+  id: string;
+  slug: string;
+  clicked_at: string;
+  utm_medium?: string;
+}
 
 interface LinkClickData {
   date: string;

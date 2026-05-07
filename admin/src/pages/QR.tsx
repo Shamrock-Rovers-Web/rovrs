@@ -2,7 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { QRCodeCanvas } from 'qrcode.react';
 import { PDFDocument } from 'pdf-lib';
-import type { Link } from '@rovrs/shared';
+
+interface Link {
+  slug: string;
+  destination_url: string;
+  title?: string;
+  expires_at?: string;
+}
 
 const QRPage: React.FC = () => {
   const navigate = useNavigate();

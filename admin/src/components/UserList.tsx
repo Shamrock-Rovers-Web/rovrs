@@ -1,6 +1,13 @@
 import { useState } from 'react';
 import { api } from '../api';
-import type { User } from '@rovrs/shared';
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  last_login_at?: string;
+}
 
 interface UserListProps {
   users: User[];

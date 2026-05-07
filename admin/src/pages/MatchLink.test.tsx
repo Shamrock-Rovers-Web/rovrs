@@ -10,6 +10,8 @@ jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
 }));
 
+const CHANNELS = ['Tickets', 'Instagram', 'Facebook', 'X/Twitter', 'TikTok', 'LinkedIn', 'QR code', 'Email', 'Sponsor', 'Matchday', 'Other'];
+
 // Mock the shared utilities
 jest.mock('@rovrs/shared', () => ({
   validateDestinationURL: jest.fn((url) => {
@@ -21,15 +23,6 @@ jest.mock('@rovrs/shared', () => ({
   }),
   validateLinkInput: jest.fn(),
   validateSlug: jest.fn(),
-  CHANNELS: {
-    SOCIAL: 'social',
-    MATCH: 'match',
-    GENERAL: 'general',
-  },
-  CAMPAIGNS: {
-    GENERAL: 'general',
-    VS_SOMETHING: 'vs-something',
-  }
 }));
 
 describe('MatchLink Component', () => {

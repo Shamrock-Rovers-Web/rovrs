@@ -4,14 +4,13 @@ import { BrowserRouter, RouterProvider, createMemoryRouter } from 'react-router-
 import { vi } from 'vitest';
 import CreateLink from './CreateLink';
 
+const CHANNELS = ['Tickets', 'Instagram', 'Facebook', 'X/Twitter', 'TikTok', 'LinkedIn', 'QR code', 'Email', 'Sponsor', 'Matchday', 'Other'];
+
 // Mock the validateSlug and validateDestinationURL functions
 vi.mock('@rovrs/shared', () => ({
   validateSlug: vi.fn(),
   validateDestinationURL: vi.fn(),
   validateLinkInput: vi.fn(),
-  CHANNELS: ['Tickets', 'Instagram', 'Facebook', 'X/Twitter'],
-  CAMPAIGNS: ['bohs', 'dundalk', 'general'],
-  LinkCreateInput: {}
 }));
 
 const mockValidateSlug = vi.mocked(require('@rovrs/shared').validateSlug);
