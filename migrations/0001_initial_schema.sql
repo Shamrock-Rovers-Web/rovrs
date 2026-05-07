@@ -1,105 +1,95 @@
--- Links table with indexes
-CREATE TABLE links (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    slug TEXT UNIQUE NOT NULL,
-    destination_url TEXT NOT NULL,
-    title TEXT,
-    campaign TEXT,
-    channel TEXT,
-    status TEXT DEFAULT 'active' CHECK(status IN ('active', 'paused', 'expired', 'deleted')),
-    redirect_code INTEGER DEFAULT 302 CHECK(redirect_code IN (301, 302)),
-    is_protected BOOLEAN DEFAULT FALSE,
-    expires_at DATETIME,
-    match_info TEXT,
-    show_interstitial BOOLEAN DEFAULT FALSE,
-    is_qr_generated BOOLEAN DEFAULT FALSE,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by TEXT,
-    updated_by TEXT
+-- rov.rs initial schema
+CREATE TABLE IF NOT EXISTS links (
+  id TEXT PRIMARY KEY,
+  slug TEXT UNIQUE NOT NULL,
+  destination_url TEXT NOT NULL,
+  destination_domain TEXT,
+  title TEXT,
+  campaign TEXT,
+  channel TEXT,
+  owner TEXT,
+  sponsor TEXT,
+  opponent TEXT,
+  competition TEXT,
+  match_date TEXT,
+  home_away TEXT,
+  status TEXT NOT NULL DEFAULT 'active',
+  redirect_code INTEGER NOT NULL DEFAULT 302,
+  is_qr BOOLEAN NOT NULL DEFAULT 0,
+  is_offsite_ticket BOOLEAN NOT NULL DEFAULT 0,
+  show_offsite_preview BOOLEAN NOT NULL DEFAULT 0,
+  is_protected BOOLEAN NOT NULL DEFAULT 0,
+  variant_of TEXT,
+  created_by TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_by TEXT,
+  updated_at TEXT,
+  expires_at TEXT,
+  deleted_at TEXT,
+  notes TEXT
 );
 
--- Click events table with indexes
-CREATE TABLE click_events (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    slug TEXT NOT NULL,
-    ip_address TEXT,
-    user_agent TEXT,
-    referrer TEXT,
-    country TEXT,
-    city TEXT,
-    utm_source TEXT,
-    utm_medium TEXT,
-    utm_campaign TEXT,
-    utm_term TEXT,
-    utm_content TEXT,
-    clicked_at DATETIME DEFAULT CURRENT_TIMESTAMP
+CREATE INDEX IF NOT EXISTS idx_links_status ON links(status);
+CREATE INDEX IF NOT EXISTS idx_links_campaign ON links(campaign);
+CREATE INDEX IF NOT EXISTS idx_links_expires_at ON links(expires_at);
+CREATE INDEX IF NOT EXISTS idx_links_channel ON links(channel);
+CREATE INDEX IF NOT EXISTS idx_links_variant_of ON links(variant_of);
+CREATE INDEX IF NOT EXISTS idx_links_sponsor ON links(sponsor);
+CREATE INDEX IF NOT EXISTS idx_links_opponent ON links(opponent);
+
+CREATE TABLE IF NOT EXISTS click_events (
+  id TEXT PRIMARY KEY,
+  link_id TEXT NOT NULL,
+  slug TEXT NOT NULL,
+  clicked_at TEXT NOT NULL,
+  country TEXT,
+  referrer TEXT,
+  device_type TEXT,
+  is_bot BOOLEAN DEFAULT 0,
+  utm_source TEXT,
+  utm_medium TEXT,
+  utm_campaign TEXT,
+  event_type TEXT NOT NULL DEFAULT 'click'
 );
 
--- Destination history table with indexes
-CREATE TABLE destination_history (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    slug TEXT NOT NULL,
-    old_destination TEXT NOT NULL,
-    new_destination TEXT NOT NULL,
-    changed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    changed_by TEXT
+CREATE INDEX IF NOT EXISTS idx_click_events_link_id ON click_events(link_id);
+CREATE INDEX IF NOT EXISTS idx_click_events_clicked_at ON click_events(clicked_at);
+CREATE INDEX IF NOT EXISTS idx_click_events_slug ON click_events(slug);
+
+CREATE TABLE IF NOT EXISTS destination_history (
+  id TEXT PRIMARY KEY,
+  link_id TEXT NOT NULL,
+  old_destination_url TEXT NOT NULL,
+  new_destination_url TEXT NOT NULL,
+  changed_by TEXT NOT NULL,
+  changed_at TEXT NOT NULL
 );
 
--- Users table
-CREATE TABLE users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT UNIQUE NOT NULL,
-    name TEXT NOT NULL,
-    role TEXT DEFAULT 'user' CHECK(role IN ('admin', 'user')),
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+CREATE INDEX IF NOT EXISTS idx_dest_history_link_id ON destination_history(link_id);
+CREATE INDEX IF NOT EXISTS idx_dest_history_changed_at ON destination_history(changed_at);
+
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  email TEXT UNIQUE NOT NULL,
+  role TEXT NOT NULL DEFAULT 'editor',
+  display_name TEXT,
+  created_at TEXT NOT NULL,
+  last_login_at TEXT
 );
 
--- Rate limits table with index
-CREATE TABLE rate_limits (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    ip_address TEXT NOT NULL,
-    path TEXT NOT NULL,
-    count INTEGER NOT NULL,
-    window_start DATETIME NOT NULL,
-    window_end DATETIME NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE IF NOT EXISTS rate_limits (
+  id TEXT PRIMARY KEY,
+  email TEXT NOT NULL,
+  created_at TEXT NOT NULL
 );
 
--- Indexes for links table
-CREATE INDEX idx_links_slug ON links(slug);
-CREATE INDEX idx_links_status ON links(status);
-CREATE INDEX idx_links_created_at ON links(created_at);
-CREATE INDEX idx_links_expires_at ON links(expires_at);
-CREATE INDEX idx_links_campaign ON links(campaign);
-CREATE INDEX idx_links_channel ON links(channel);
-
--- Indexes for click_events table
-CREATE INDEX idx_click_events_slug ON click_events(slug);
-CREATE INDEX idx_click_events_clicked_at ON click_events(clicked_at);
-
--- Indexes for destination_history table
-CREATE INDEX idx_destination_history_slug ON destination_history(slug);
-CREATE INDEX idx_destination_history_changed_at ON destination_history(changed_at);
-
--- Index for rate_limits table
-CREATE INDEX idx_rate_limits_ip_path_window ON rate_limits(ip_address, path, window_start);
+CREATE INDEX IF NOT EXISTS idx_rate_limits_email_created ON rate_limits(email, created_at);
 
 -- Seed evergreen links
-INSERT INTO links (slug, destination_url, title, status, redirect_code, is_protected, created_by) VALUES
-('tickets', 'https://www.shamrockrovers.ie/tickets', 'Tickets', 'active', 301, TRUE, 'system'),
-('shop', 'https://shop.shamrockrovers.ie', 'Shop', 'active', 301, TRUE, 'system'),
-('fixtures', 'https://www.shamrockrovers.ie/fixtures', 'Fixtures', 'active', 301, TRUE, 'system'),
-('members', 'https://www.shamrockrovers.ie/members', 'Members', 'active', 301, TRUE, 'system'),
-('academy', 'https://www.shamrockrovers.ie/academy', 'Academy', 'active', 301, TRUE, 'system'),
-('women', 'https://www.shamrockrovers.ie/women', 'Women''s Team', 'active', 301, TRUE, 'system');
-
--- Trigger to update updated_at timestamp
-CREATE TRIGGER update_links_timestamp
-    AFTER UPDATE ON links
-    FOR EACH ROW
-BEGIN
-    UPDATE links SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
-END;
+INSERT INTO links (id, slug, destination_url, destination_domain, title, status, redirect_code, is_protected, created_by, created_at) VALUES
+  ('evergreen000001', 'tickets', 'https://www.shamrockrovers.ie/first-team-tickets', 'www.shamrockrovers.ie', 'Tickets', 'active', 301, 1, 'system', '2026-05-07T00:00:00Z'),
+  ('evergreen000002', 'shop', 'https://shop.shamrockrovers.ie', 'shop.shamrockrovers.ie', 'Shop', 'active', 301, 1, 'system', '2026-05-07T00:00:00Z'),
+  ('evergreen000003', 'fixtures', 'https://www.shamrockrovers.ie/fixtures', 'www.shamrockrovers.ie', 'Fixtures', 'active', 301, 1, 'system', '2026-05-07T00:00:00Z'),
+  ('evergreen000004', 'members', 'https://www.shamrockrovers.ie/membership', 'www.shamrockrovers.ie', 'Members', 'active', 301, 1, 'system', '2026-05-07T00:00:00Z'),
+  ('evergreen000005', 'academy', 'https://www.shamrockrovers.ie/academy', 'www.shamrockrovers.ie', 'Academy', 'active', 301, 1, 'system', '2026-05-07T00:00:00Z'),
+  ('evergreen000006', 'women', 'https://www.shamrockrovers.ie/women', 'www.shamrockrovers.ie', 'Women', 'active', 301, 1, 'system', '2026-05-07T00:00:00Z');

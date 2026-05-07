@@ -1,27 +1,18 @@
-name = "rovrs-archival-worker"
-main = "dist/index.js"
-compatibility_date = "2023-12-01"
+name = "rovrs-archival"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
 
-[env.production]
-vars = { ENVIRONMENT = "production" }
+[triggers]
+crons = ["0 3 * * *"]
 
-[env.staging]
-vars = { ENVIRONMENT = "staging" }
+[[d1_databases]]
+binding = "DB"
+database_name = "rovrs-db"
+database_id = "7c172f99-9550-4aa7-a33f-165fc340a051"
 
-[[env.production.kv_namespaces]]
-binding = "KV_LINKS"
-id = "your-kv-namespace-id"
+[[r2_buckets]]
+binding = "ARCHIVE"
+bucket_name = "rovrs-click-archive"
 
-[[env.staging.kv_namespaces]]
-binding = "KV_LINKS"
-id = "your-staging-kv-id"
-
-[env.production.durable_objects]
-bindings = [
-  { name = "ARCHIVAL_QUEUE", class_name = "ArchivalQueue" }
-]
-
-[env.staging.durable_objects]
-bindings = [
-  { name = "ARCHIVAL_QUEUE", class_name = "ArchivalQueue" }
-]
+[vars]
+RETENTION_DAYS = "180"

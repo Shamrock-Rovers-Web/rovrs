@@ -1,94 +1,69 @@
-// Archival worker for cleaning up expired links
-export interface Env {
-  KV_LINKS: KVNamespace;
+interface Env {
   DB: D1Database;
-  ARCHIVAL_QUEUE: DurableObjectNamespace;
-  ENVIRONMENT: string;
+  ARCHIVE: R2Bucket;
+  RETENTION_DAYS: string;
 }
 
 export default {
   async scheduled(event: ScheduledEvent, env: Env): Promise<void> {
-    console.log(`Archival worker triggered at ${new Date().toISOString()}`);
+    const retentionDays = parseInt(env.RETENTION_DAYS || '180', 10);
+    const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000).toISOString();
 
-    try {
-      await cleanupExpiredLinks(env);
-    } catch (error) {
-      console.error('Error in archival processing:', error);
-      throw error;
+    console.log(`Archiving click events older than ${cutoff}`);
+
+    let archived = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { results } = await env.DB
+        .prepare('SELECT * FROM click_events WHERE clicked_at < ? LIMIT 1000')
+        .bind(cutoff)
+        .all();
+
+      if (!results || results.length === 0) {
+        hasMore = false;
+        break;
+      }
+
+      // Group by date for R2 partitioning
+      const byDate = new Map<string, any[]>();
+      for (const row of results) {
+        const date = (row.clicked_at as string).substring(0, 10);
+        if (!byDate.has(date)) byDate.set(date, []);
+        byDate.get(date)!.push(row);
+      }
+
+      // Write to R2
+      for (const [date, rows] of byDate) {
+        const [year, month] = date.split('-');
+        const key = `archive/${year}/${month}/${date}.json`;
+
+        // Append to existing archive or create new
+        const existing = await env.ARCHIVE.get(key);
+        let existingData: any[] = [];
+        if (existing) {
+          existingData = (await existing.json()) as any[];
+        }
+
+        existingData.push(...rows);
+        await env.ARCHIVE.put(key, JSON.stringify(existingData));
+      }
+
+      // Delete archived rows from D1
+      const ids = results.map((r: any) => r.id);
+      const placeholders = ids.map(() => '?').join(',');
+      await env.DB
+        .prepare(`DELETE FROM click_events WHERE id IN (${placeholders})`)
+        .bind(...ids)
+        .run();
+
+      archived += results.length;
+      console.log(`Archived ${archived} events so far`);
+
+      // Stop if we got less than batch size
+      if (results.length < 1000) hasMore = false;
     }
-  },
 
-  async fetch(request: Request, env: Env): Promise<Response> {
-    if (request.method !== 'POST') {
-      return new Response('Method not allowed', { status: 405 });
-    }
-
-    const body = await request.json();
-    const { slug } = body;
-
-    if (!slug) {
-      return new Response('Slug is required', { status: 400 });
-    }
-
-    try {
-      await markLinkAsDeleted(env, slug);
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { 'Content-Type': 'application/json' },
-      });
-    } catch (error) {
-      return new Response(JSON.stringify({ error: 'Failed to delete link' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+    console.log(`Archival complete. ${archived} events archived.`);
   },
 };
-
-async function cleanupExpiredLinks(env: Env): Promise<void> {
-  const now = new Date().toISOString();
-  console.log(`Cleaning up expired links at ${now}`);
-
-  // Get expired links from database
-  const { results } = await env.DB.prepare(`
-    SELECT slug FROM links
-    WHERE status = 'active' AND expiry_date IS NOT NULL AND expiry_date < ?
-  `).bind(now).all();
-
-  if (results.length === 0) {
-    console.log('No expired links found');
-    return;
-  }
-
-  console.log(`Found ${results.length} expired links`);
-
-  // Update status to expired
-  const slugs = results.map((r: any) => r.slug);
-  const placeholders = slugs.map((_, i) => `?`).join(',');
-
-  await env.DB.prepare(`
-    UPDATE links
-    SET status = 'expired', updated_at = ?
-    WHERE slug IN (${placeholders})
-  `).bind(now, ...slugs).run();
-
-  // Remove from KV
-  for (const slug of slugs) {
-    await env.KV_LINKS.delete(slug);
-  }
-
-  console.log(`Processed ${slugs.length} expired links`);
-}
-
-async function markLinkAsDeleted(env: Env, slug: string): Promise<void> {
-  const now = new Date().toISOString();
-
-  // Update in database
-  await env.DB.prepare(`
-    UPDATE links
-    SET status = 'deleted', updated_at = ?
-    WHERE slug = ?
-  `).bind(now, slug).run();
-
-  // Remove from KV
-  await env.KV_LINKS.delete(slug);
-}

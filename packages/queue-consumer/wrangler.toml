@@ -1,18 +1,13 @@
 name = "rovrs-queue-consumer"
 main = "src/index.ts"
-compatibility_date = "2024-01-01"
+compatibility_date = "2025-01-01"
 
-[env.production]
-[queues.producer]
-queue = "click-events"
-binding = "CLICK_EVENTS_QUEUE"
+[[queues.consumers]]
+queue = "rovrs-click-events"
+max_batch_size = 100
+max_batch_timeout = 30
 
-[env.staging]
-[queues.producer]
-queue = "click-events-staging"
-binding = "CLICK_EVENTS_QUEUE"
-
-[env.development]
-[queues.producer]
-queue = "click-events-dev"
-binding = "CLICK_EVENTS_QUEUE"
+[[d1_databases]]
+binding = "DB"
+database_name = "rovrs-db"
+database_id = "7c172f99-9550-4aa7-a33f-165fc340a051"

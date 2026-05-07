@@ -1,3 +1,0 @@
--- This migration adds the rate_limits table
--- This table is already included in 0001_initial_schema.sql
--- No changes needed

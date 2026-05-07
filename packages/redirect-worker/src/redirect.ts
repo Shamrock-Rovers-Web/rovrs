@@ -1,184 +1,86 @@
 import type { D1Database } from '@cloudflare/workers-types';
 
 interface Link {
+  id: string;
   slug: string;
-  destination: string;
-  destination_url?: string;
-  destination_domain?: string;
-  campaign?: string;
-  channel?: string;
-  status: 'active' | 'deleted' | 'expired' | 'paused';
-  expiry_date?: string;
-  match_date?: string;
+  destination_url: string;
+  destination_domain: string | null;
+  title: string | null;
+  campaign: string | null;
+  channel: string | null;
+  status: string;
+  redirect_code: number;
+  is_protected: number;
+  is_offsite_ticket: number;
+  show_offsite_preview: number;
+  variant_of: string | null;
+  expires_at: string | null;
+  match_date: string | null;
   created_at: string;
-  updated_at: string;
-  // Variant support
-  variant_of?: string;
+  updated_at: string | null;
 }
 
 interface LinkLookupResult {
   link: Link | null;
-  shouldUpdateStatus: boolean;
 }
 
-export async function lookupLink(
-  db: D1Database,
-  slug: string
-): Promise<LinkLookupResult> {
-  const now = new Date().toISOString();
+const FALLBACK_URL = 'https://www.shamrockrovers.ie/first-team-tickets';
+const PROTECTED_SLUGS = new Set(['tickets', 'shop', 'fixtures', 'members', 'academy', 'women']);
 
-  // Query for the link
-  const { results } = await db
-    .prepare('SELECT * FROM links WHERE slug = ?')
-    .bind(slug)
-    .all();
+export async function lookupLink(db: D1Database, slug: string): Promise<LinkLookupResult> {
+  try {
+    const result = await db
+      .prepare('SELECT * FROM links WHERE slug = ? AND status != ?')
+      .bind(slug, 'deleted')
+      .first() as Link | null;
 
-  const link = results?.[0] as Link | null;
+    if (!result) {
+      return { link: null };
+    }
 
-  if (!link) {
-    return { link: null, shouldUpdateStatus: false };
+    const now = new Date();
+
+    // Check expiry
+    if (result.expires_at && new Date(result.expires_at) < now) {
+      if (result.status === 'active') {
+        await db
+          .prepare('UPDATE links SET status = ?, updated_at = datetime("now") WHERE id = ?')
+          .bind('expired', result.id)
+          .run();
+      }
+      return { link: null };
+    }
+
+    // Check match date passed (+4 hours)
+    if (result.match_date) {
+      const matchEnd = new Date(result.match_date);
+      matchEnd.setHours(matchEnd.getHours() + 4);
+      if (matchEnd < now) {
+        return { link: null };
+      }
+    }
+
+    // Only return active links
+    if (result.status !== 'active') {
+      return { link: null };
+    }
+
+    return { link: result };
+  } catch (error) {
+    console.error('DB lookup error:', error);
+    return { link: null };
   }
-
-  // Check if link is expired
-  const isExpired = link.expiry_date && link.expiry_date < now;
-
-  // Check if match date has passed
-  const isMatchDatePassed = link.match_date && link.match_date < now;
-
-  // Update status if expired and currently active
-  const shouldUpdateStatus = isExpired && link.status === 'active';
-
-  if (shouldUpdateStatus) {
-    await updateLinkStatus(db, slug, 'expired');
-    return { link: null, shouldUpdateStatus: true };
-  }
-
-  // Return null if link is not active
-  if (link.status !== 'active' || isMatchDatePassed) {
-    return { link: null, shouldUpdateStatus: false };
-  }
-
-  return { link, shouldUpdateStatus: false };
-}
-
-export async function updateLinkStatus(
-  db: D1Database,
-  slug: string,
-  status: 'active' | 'deleted' | 'expired' | 'paused'
-): Promise<void> {
-  await db
-    .prepare('UPDATE links SET status = ?, updated_at = ? WHERE slug = ?')
-    .bind(status, new Date().toISOString(), slug)
-    .run();
 }
 
 export function handleRedirect(link: Link): Response {
-  const isEvergreen = ['tickets', 'shop', 'fixtures'].includes(link.slug);
-  const status = isEvergreen ? 301 : 302;
-
-  // Use destination_url if available, otherwise fall back to destination
-  let url = link.destination_url || link.destination;
-
-  try {
-    const urlObj = new URL(url);
-
-    // Add UTM tags if present in link metadata
-    if (link.campaign || link.channel) {
-      const params = new URLSearchParams(urlObj.search);
-      if (link.campaign) {
-        params.set('utm_campaign', link.campaign);
-      }
-      if (link.channel) {
-        params.set('utm_channel', link.channel);
-      }
-      urlObj.search = params.toString();
-      url = urlObj.toString();
-    }
-  } catch (e) {
-    // If URL parsing fails, use as-is
-    console.warn('Invalid URL:', url);
-  }
+  const isEvergreen = PROTECTED_SLUGS.has(link.slug);
+  const status = isEvergreen ? 301 : (link.redirect_code || 302);
 
   return new Response(null, {
     status,
     headers: {
-      Location: url,
-    },
-  });
-}
-
-interface HealthStatus {
-  status: 'ok' | 'degraded' | 'error';
-  db: 'ok' | 'error';
-  queue: 'ok' | 'error';
-  details: {
-    db_latency?: number;
-    queue_status?: string;
-  };
-}
-
-export async function handleHealth(db: D1Database, queue?: any): Promise<Response> {
-  const startTime = Date.now();
-  const health: HealthStatus = {
-    status: 'ok',
-    db: 'ok',
-    queue: 'ok',
-    details: {}
-  };
-
-  try {
-    // Check database connectivity
-    const dbStart = Date.now();
-    await db
-      .prepare('SELECT COUNT(*) as count FROM links')
-      .first();
-    health.details.db_latency = Date.now() - dbStart;
-
-    // Check queue connectivity if queue is provided
-    if (queue) {
-      try {
-        // Send a test message to verify queue connectivity
-        const testMessage = {
-          id: `test-${Date.now()}`,
-          slug: 'health-check',
-          timestamp: new Date().toISOString(),
-          test: true
-        };
-
-        await queue.send(testMessage);
-
-        // Receive and immediately acknowledge the test message
-        const messages = await queue.receive(1, { waitSeconds: 1 });
-        if (messages.length > 0) {
-          await queue.ack(messages[0].id);
-          health.details.queue_status = 'ready';
-        } else {
-          health.status = 'degraded';
-          health.queue = 'error';
-          health.details.queue_status = 'no_messages';
-        }
-      } catch (error) {
-        console.error('Queue health check failed:', error);
-        health.status = 'degraded';
-        health.queue = 'error';
-        health.details.queue_status = 'error';
-      }
-    }
-  } catch (error) {
-    console.error('Health check failed:', error);
-    health.status = 'error';
-    health.db = 'error';
-  }
-
-  const responseTime = Date.now() - startTime;
-
-  return new Response(JSON.stringify({
-    ...health,
-    response_time: responseTime
-  }), {
-    status: health.status === 'ok' ? 200 : (health.status === 'degraded' ? 206 : 503),
-    headers: {
-      'Content-Type': 'application/json',
+      Location: link.destination_url,
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
     },
   });
 }
@@ -187,7 +89,32 @@ export function handleRootRedirect(): Response {
   return new Response(null, {
     status: 302,
     headers: {
-      Location: 'https://shamrockrovers.ie',
+      Location: 'https://www.shamrockrovers.ie',
+      'Cache-Control': 'no-cache',
     },
+  });
+}
+
+export async function handleHealth(db: D1Database, queue?: any): Promise<Response> {
+  const health: Record<string, any> = {
+    status: 'ok',
+    db: 'ok',
+    timestamp: new Date().toISOString(),
+  };
+
+  try {
+    await db.prepare('SELECT 1 as ok').first();
+  } catch (error) {
+    health.status = 'error';
+    health.db = 'error';
+    return new Response(JSON.stringify(health), {
+      status: 503,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  return new Response(JSON.stringify(health), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
   });
 }
