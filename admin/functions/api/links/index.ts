@@ -1,223 +1,142 @@
-import { Context, Hono } from 'hono';
-import { sql } from 'drizzle-orm';
-import { eq, or, desc, ilike, and, isNull, lt } from 'drizzle-orm/expressions';
-import { links, clickEvents } from '../schema';
-import { validateLinkInput, validateUpdateInput, LinkCreateInput, LinkUpdateInput } from '@rovrs/shared';
-import { applyRateLimit } from '../rate-limit';
+interface Env {
+  DB: D1Database;
+}
 
-const app = new Hono();
-applyRateLimit(app);
+function json(data: any, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
 
-// GET /api/links - List links with search, filter, and pagination
-app.get('/', async (c) => {
+export const onRequestGet: PagesFunction<Env> = async (context) => {
   try {
-    const {
-      search = '',
-      status = '',
-      channel = '',
-      campaign = '',
-      limit = 20,
-      offset = 0,
-      sort_by = 'created_at',
-      sort_order = 'desc'
-    } = c.req.query();
+    const url = new URL(context.request.url);
+    const search = url.searchParams.get('search') || '';
+    const status = url.searchParams.get('status') || '';
+    const channel = url.searchParams.get('channel') || '';
+    const campaign = url.searchParams.get('campaign') || '';
+    const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '20'), 1), 100);
+    const offset = Math.max(parseInt(url.searchParams.get('offset') || '0'), 0);
+    const sort_by = url.searchParams.get('sort_by') || 'created_at';
+    const sort_order = url.searchParams.get('sort_order') === 'asc' ? 'ASC' : 'DESC';
 
-    // Validate limit and offset
-    const validatedLimit = Math.min(Math.max(parseInt(limit) || 20, 1), 100);
-    const validatedOffset = Math.max(parseInt(offset) || 0, 0);
+    const allowedSorts = ['created_at', 'updated_at', 'expires_at', 'title', 'slug'];
+    const safeSort = allowedSorts.includes(sort_by) ? sort_by : 'created_at';
 
-    // Build query conditions
-    const conditions = [];
+    const conditions: string[] = ["status != 'deleted'"];
+    const params: any[] = [];
 
     if (status) {
-      conditions.push(eq(links.status, status));
+      conditions.push('status = ?');
+      params.push(status);
     }
-
     if (channel) {
-      conditions.push(eq(links.channel, channel));
+      conditions.push('channel = ?');
+      params.push(channel);
     }
-
     if (campaign) {
-      conditions.push(eq(links.campaign, campaign));
+      conditions.push('campaign = ?');
+      params.push(campaign);
     }
-
     if (search) {
-      conditions.push(
-        or(
-          ilike(links.slug, `%${search}%`),
-          ilike(links.destination_url, `%${search}%`),
-          ilike(links.title, `%${search}%`)
-        )
-      );
+      conditions.push('(slug LIKE ? OR destination_url LIKE ? OR title LIKE ?)');
+      const term = `%${search}%`;
+      params.push(term, term, term);
     }
 
-    // Filter out deleted links by default
-    conditions.push(or(isNull(links.deleted_at), eq(links.status, 'active')));
+    const where = conditions.join(' AND ');
 
-    // Build sort conditions
-    const sortByMap = {
-      'created_at': links.created_at,
-      'updated_at': links.updated_at,
-      'clicks': sql`(SELECT COUNT(*) FROM click_events WHERE slug = links.slug)`,
-      'expires_at': links.expires_at
-    };
+    const countResult = await context.env.DB.prepare(
+      `SELECT COUNT(*) as total FROM links WHERE ${where}`
+    ).bind(...params).first<{ total: number }>();
 
-    const sortBy = sortByMap[sort_by as keyof typeof sortByMap] || links.created_at;
-    const sortOrder = sort_order === 'asc' ? 'asc' : 'desc';
+    const linksData = await context.env.DB.prepare(
+      `SELECT l.*, (SELECT COUNT(*) FROM click_events WHERE link_id = l.id) as click_count
+       FROM links l
+       WHERE ${where}
+       ORDER BY l.${safeSort} ${sort_order}
+       LIMIT ? OFFSET ?`
+    ).bind(...params, limit, offset).all();
 
-    // Get total count
-    const [{ count: totalCount }] = await c.env.DB.prepare(`
-      SELECT COUNT(*) as count
-      FROM links
-      WHERE ${conditions.length > 0 ? conditions.join(' AND ') : '1=1'}
-    `).all();
-
-    // Get links with click count
-    const linksData = await c.env.DB.prepare(`
-      SELECT
-        l.*,
-        (SELECT COUNT(*) FROM click_events WHERE slug = l.slug) as click_count
-      FROM links l
-      WHERE ${conditions.length > 0 ? conditions.join(' AND ') : '1=1'}
-      ORDER BY ${sortBy} ${sortOrder}
-      LIMIT ? OFFSET ?
-    `).bind(validatedLimit, validatedOffset).all();
-
-    // Format response
-    const formattedLinks = linksData.map(link => ({
-      ...link,
-      expires_at: link.expires_at || null,
-      created_at: link.created_at,
-      updated_at: link.updated_at || null,
-      click_count: parseInt(link.click_count || 0)
-    }));
-
-    return c.json({
+    return json({
       success: true,
-      data: formattedLinks,
+      data: linksData.results,
       pagination: {
-        total: parseInt(totalCount),
-        limit: validatedLimit,
-        offset: validatedOffset,
-        has_more: validatedOffset + validatedLimit < parseInt(totalCount)
-      }
+        total: countResult?.total || 0,
+        limit,
+        offset,
+        has_more: offset + limit < (countResult?.total || 0),
+      },
     });
   } catch (error) {
     console.error('Error fetching links:', error);
-    return c.json(
-      { error: 'Failed to fetch links' },
-      { status: 500 }
-    );
+    return json({ success: false, error: 'Failed to fetch links' }, 500);
   }
-});
+};
 
-// POST /api/links - Create new link
-app.post('/', async (c) => {
+export const onRequestPost: PagesFunction<Env> = async (context) => {
   try {
-    const input = await c.req.json<LinkCreateInput>();
+    const input = await context.request.json() as Record<string, any>;
 
-    // Validate input
-    const errors = validateLinkInput(input);
-    if (errors.length > 0) {
-      return c.json(
-        {
-          success: false,
-          error: 'Validation failed',
-          errors
-        },
-        { status: 400 }
-      );
+    if (!input.slug || !input.destination_url) {
+      return json({ success: false, error: 'slug and destination_url are required' }, 400);
     }
 
-    // Check if slug already exists
-    const existingLink = await c.env.DB.prepare(`
-      SELECT slug FROM links WHERE slug = ? AND status != 'deleted'
-    `).bind(input.slug).first();
-
-    if (existingLink) {
-      return c.json(
-        {
-          success: false,
-          error: 'Slug already exists'
-        },
-        { status: 409 }
-      );
+    const slug = String(input.slug).toLowerCase();
+    if (!/^[a-z0-9][a-z0-9-]{0,48}[a-z0-9]$/.test(slug)) {
+      return json({ success: false, error: 'Invalid slug format' }, 400);
     }
 
-    // Parse domain from destination URL
-    let destinationDomain = '';
     try {
       const url = new URL(input.destination_url);
-      destinationDomain = url.hostname;
-    } catch {
-      // Use domain extraction fallback
-      const match = input.destination_url.match(/https?:\/\/([^\/]+)/);
-      if (match) {
-        destinationDomain = match[1];
+      if (['javascript:', 'data:', 'file:', 'ftp:'].includes(url.protocol)) {
+        return json({ success: false, error: 'Blocked URL protocol' }, 400);
       }
+    } catch {
+      return json({ success: false, error: 'Invalid destination URL' }, 400);
     }
 
-    // Create link
+    const existing = await context.env.DB.prepare(
+      "SELECT id FROM links WHERE slug = ? AND status != 'deleted'"
+    ).bind(slug).first();
+    if (existing) {
+      return json({ success: false, error: 'Slug already exists' }, 409);
+    }
+
+    let destinationDomain: string | null = null;
+    try {
+      destinationDomain = new URL(input.destination_url).hostname;
+    } catch {}
+
     const now = new Date().toISOString();
-    const result = await c.env.DB.prepare(`
-      INSERT INTO links (
-        slug, destination_url, destination_domain, title, campaign, channel,
+    const id = crypto.randomUUID();
+
+    await context.env.DB.prepare(`
+      INSERT INTO links (id, slug, destination_url, destination_domain, title, campaign, channel,
         owner, sponsor, opponent, competition, match_date, home_away,
-        status, redirect_code, is_qr, is_offsite_ticket, show_offsite_preview,
-        expires_at, notes, created_at, updated_at, created_by, updated_by
-      ) VALUES (
-        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-      )
+        status, redirect_code, is_qr, is_offsite_ticket, show_offsite_preview, is_protected,
+        variant_of, expires_at, notes, created_by, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
-      input.slug,
-      input.destination_url,
-      destinationDomain,
-      input.title || null,
-      input.campaign || null,
-      input.channel || null,
-      input.owner || null,
-      input.sponsor || null,
-      input.opponent || null,
-      input.competition || null,
-      input.match_date || null,
-      input.home_away || null,
-      input.status || 'active',
-      input.redirect_code || 302,
-      input.is_qr || false,
-      input.is_offsite_ticket || false,
-      input.show_offsite_preview || false,
-      input.expires_at || null,
-      input.notes || null,
-      now,
-      now,
-      c.get('user')?.email || 'unknown',
-      c.get('user')?.email || 'unknown'
+      id, slug, input.destination_url, destinationDomain,
+      input.title || null, input.campaign || null, input.channel || null,
+      input.owner || null, input.sponsor || null, input.opponent || null,
+      input.competition || null, input.match_date || null, input.home_away || null,
+      input.status || 'active', input.redirect_code || 302,
+      input.is_qr ? 1 : 0, input.is_offsite_ticket ? 1 : 0,
+      input.show_offsite_preview ? 1 : 0, input.is_protected ? 1 : 0,
+      input.variant_of || null, input.expires_at || null, input.notes || null,
+      input.created_by || 'admin', now
     ).run();
 
-    // Get the created link
-    const createdLink = await c.env.DB.prepare(`
-      SELECT
-        l.*,
-        (SELECT COUNT(*) FROM click_events WHERE slug = l.slug) as click_count
-      FROM links l
-      WHERE l.rowid = ?
-    `).bind(result.meta.last_row_id).first();
+    const created = await context.env.DB.prepare(
+      'SELECT * FROM links WHERE id = ?'
+    ).bind(id).first();
 
-    return c.json({
-      success: true,
-      data: {
-        ...createdLink,
-        expires_at: createdLink.expires_at || null,
-        click_count: parseInt(createdLink.click_count || 0)
-      }
-    }, { status: 201 });
+    return json({ success: true, data: created }, 201);
   } catch (error) {
     console.error('Error creating link:', error);
-    return c.json(
-      { error: 'Failed to create link' },
-      { status: 500 }
-    );
+    return json({ success: false, error: 'Failed to create link' }, 500);
   }
-});
-
-export default app;
+};

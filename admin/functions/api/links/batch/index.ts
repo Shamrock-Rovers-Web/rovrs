@@ -1,153 +1,96 @@
-import { Context, Hono } from 'hono';
-import { eq, isNull } from 'drizzle-orm/expressions';
-import { links } from '../../schema';
-import { BatchOperation } from '@rovrs/shared';
-import { applyRateLimit } from '../../rate-limit';
+interface Env {
+  DB: D1Database;
+}
 
-const app = new Hono();
-applyRateLimit(app);
+function json(data: any, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
 
-// POST /api/links/batch - Batch operations on multiple links
-app.post('/', async (c) => {
+export const onRequestPost: PagesFunction<Env> = async (context) => {
   try {
-    const operations = await c.req.json<BatchOperation[]>();
+    const operations = await context.request.json() as Array<{
+      operation: string;
+      slug: string;
+      destination_url?: string;
+    }>;
 
     if (!Array.isArray(operations) || operations.length === 0) {
-      return c.json(
-        {
-          success: false,
-          error: 'Operations must be a non-empty array'
-        },
-        { status: 400 }
-      );
+      return json({ success: false, error: 'Operations must be a non-empty array' }, 400);
     }
 
     if (operations.length > 100) {
-      return c.json(
-        {
-          success: false,
-          error: 'Maximum 100 operations per batch'
-        },
-        { status: 400 }
-      );
+      return json({ success: false, error: 'Maximum 100 operations per batch' }, 400);
     }
 
-    const results = [];
-    const errors = [];
+    const validOps = ['pause', 'expire', 'update_destination'];
+    const results: any[] = [];
+    const errors: any[] = [];
 
-    for (const operation of operations) {
+    for (const op of operations) {
       try {
-        const { operation: op, slug, destination_url } = operation;
-
-        // Validate operation
-        const validOps = ['pause', 'expire', 'update_destination'];
-        if (!validOps.includes(op)) {
-          errors.push({
-            slug,
-            error: `Invalid operation: ${op}`
-          });
+        if (!validOps.includes(op.operation)) {
+          errors.push({ slug: op.slug, error: `Invalid operation: ${op.operation}` });
           continue;
         }
 
-        // Check if link exists
-        const existingLink = await c.env.DB.prepare(`
-          SELECT rowid, status FROM links WHERE slug = ? AND status != 'deleted'
-        `).bind(slug).first();
+        const existing = await context.env.DB.prepare(
+          "SELECT id FROM links WHERE slug = ? AND status != 'deleted'"
+        ).bind(op.slug).first<{ id: string }>();
 
-        if (!existingLink) {
-          errors.push({
-            slug,
-            error: 'Link not found'
-          });
+        if (!existing) {
+          errors.push({ slug: op.slug, error: 'Link not found' });
           continue;
         }
 
-        // Update based on operation
-        const now = new Date().toISOString();
-        let updateData: Record<string, any> = { updated_at: now, updated_by: c.get('user')?.email || 'unknown' };
-
-        switch (op) {
+        switch (op.operation) {
           case 'pause':
-            updateData.status = 'paused';
+            await context.env.DB.prepare(
+              "UPDATE links SET status = 'paused', updated_at = datetime('now') WHERE id = ?"
+            ).bind(existing.id).run();
             break;
+
           case 'expire':
-            updateData.status = 'expired';
-            updateData.expires_at = new Date().toISOString();
+            await context.env.DB.prepare(
+              `UPDATE links SET status = 'expired', expires_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`
+            ).bind(existing.id).run();
             break;
+
           case 'update_destination':
-            if (!destination_url) {
-              errors.push({
-                slug,
-                error: 'Destination URL is required for update_destination operation'
-              });
+            if (!op.destination_url) {
+              errors.push({ slug: op.slug, error: 'destination_url required' });
               continue;
             }
-
-            // Validate destination URL
             try {
-              const url = new URL(destination_url);
-              const unsafeProtocols = ['javascript:', 'data:', 'file:', 'ftp:'];
-              if (unsafeProtocols.includes(url.protocol)) {
-                errors.push({
-                  slug,
-                  error: 'URL protocol is not allowed'
-                });
-                continue;
-              }
-
-              updateData.destination_url = destination_url;
-              updateData.destination_domain = url.hostname;
-              updateData.updated_at = now;
-              updateData.updated_by = c.get('user')?.email || 'unknown';
+              const hostname = new URL(op.destination_url).hostname;
+              await context.env.DB.prepare(
+                `UPDATE links SET destination_url = ?, destination_domain = ?, updated_at = datetime('now') WHERE id = ?`
+              ).bind(op.destination_url, hostname, existing.id).run();
             } catch {
-              errors.push({
-                slug,
-                error: 'Invalid destination URL format'
-              });
+              errors.push({ slug: op.slug, error: 'Invalid destination URL' });
               continue;
             }
             break;
         }
 
-        // Execute update
-        const updateFields = Object.keys(updateData);
-        const updateValues = updateFields.map(field => updateData[field]);
-
-        await c.env.DB.prepare(`
-          UPDATE links
-          SET ${updateFields.map((_, index) => `${updateFields[index]} = ?`).join(', ')}
-          WHERE rowid = ?
-        `).bind(...updateValues, existingLink.rowid).run();
-
-        results.push({
-          slug,
-          operation: op,
-          status: 'success'
-        });
-      } catch (error) {
-        console.error(`Error processing operation for ${slug}:`, error);
-        errors.push({
-          slug,
-          error: 'Internal server error'
-        });
+        results.push({ slug: op.slug, operation: op.operation, status: 'success' });
+      } catch {
+        errors.push({ slug: op.slug, error: 'Internal error' });
       }
     }
 
-    return c.json({
+    return json({
       success: true,
       results,
       errors,
       total_processed: operations.length,
       successful: results.length,
-      failed: errors.length
+      failed: errors.length,
     });
   } catch (error) {
-    console.error('Error processing batch operations:', error);
-    return c.json(
-      { error: 'Failed to process batch operations' },
-      { status: 500 }
-    );
+    console.error('Error processing batch:', error);
+    return json({ success: false, error: 'Failed to process batch operations' }, 500);
   }
-});
-
-export default app;
+};
