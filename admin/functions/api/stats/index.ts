@@ -21,6 +21,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       qrClicks7d,
       qrClicks30d,
       topLinks,
+      topQrCodes,
     ] = await Promise.all([
       context.env.DB.prepare("SELECT COUNT(*) as total FROM links WHERE status != 'deleted'").first<{ total: number }>(),
       context.env.DB.prepare("SELECT COUNT(*) as total FROM links WHERE status = 'active'").first<{ total: number }>(),
@@ -50,6 +51,14 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
          GROUP BY l.id
          ORDER BY clicks DESC LIMIT 5`
       ).all(),
+      context.env.DB.prepare(
+        `SELECT l.slug, l.title, COUNT(ce.id) as qr_scans
+         FROM links l
+         JOIN click_events ce ON ce.link_id = l.id
+         WHERE ce.utm_source = 'qr' AND ce.clicked_at >= datetime('now', '-30 days') AND l.status != 'deleted'
+         GROUP BY l.id
+         ORDER BY qr_scans DESC LIMIT 5`
+      ).all(),
     ]);
 
     return json({
@@ -64,6 +73,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
         qr_clicks_7d: qrClicks7d?.total || 0,
         qr_clicks_30d: qrClicks30d?.total || 0,
         top_links: topLinks.results,
+        top_qr_codes: topQrCodes.results,
       },
     });
   } catch (error) {

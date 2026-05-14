@@ -265,6 +265,13 @@ const CreateLink: React.FC = () => {
       link.href = url;
       link.download = `rovrs-qrcode-${formData.createdLink.slug}.png`;
       link.click();
+
+      // Mark link as QR so it shows up in QR Codes page
+      await fetch(`/api/links/${formData.createdLink.slug}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_qr: true }),
+      });
     } catch (error) {
       alert('Failed to generate QR code');
     }

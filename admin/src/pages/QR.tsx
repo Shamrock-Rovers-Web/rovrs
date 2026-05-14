@@ -28,10 +28,15 @@ const QRPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const [searchSlug, setSearchSlug] = useState('');
+  const [filterText, setFilterText] = useState('');
   const [selectedLink, setSelectedLink] = useState<QRLink | null>(null);
   const [qrSize, setQrSize] = useState(512);
   const qrRef = useRef<HTMLDivElement>(null);
+
+  // Generate for any slug
+  const [lookupSlug, setLookupSlug] = useState('');
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupError, setLookupError] = useState('');
 
   const [editSlug, setEditSlug] = useState<string | null>(null);
   const [editUrl, setEditUrl] = useState('');
@@ -60,9 +65,48 @@ const QRPage: React.FC = () => {
 
   useEffect(() => { fetchQrLinks(); }, [fetchQrLinks]);
 
-  const filteredLinks = searchSlug
-    ? links.filter(l => l.slug.includes(searchSlug.toLowerCase()) || (l.title || '').toLowerCase().includes(searchSlug.toLowerCase()))
+  const filteredLinks = filterText
+    ? links.filter(l => l.slug.includes(filterText.toLowerCase()) || (l.title || '').toLowerCase().includes(filterText.toLowerCase()))
     : links;
+
+  const lookupLink = async () => {
+    const slug = lookupSlug.trim();
+    if (!slug) return;
+    setLookupLoading(true);
+    setLookupError('');
+    try {
+      const res = await fetch(`/api/links/${slug}`);
+      if (!res.ok) {
+        setLookupError('Link not found');
+        return;
+      }
+      const result = await res.json();
+      const data = result.data || result;
+      // Convert to QRLink shape
+      const link: QRLink = {
+        id: data.id,
+        slug: data.slug,
+        destination_url: data.destination_url,
+        title: data.title,
+        status: data.status,
+        is_qr: data.is_qr || 0,
+        click_count: data.click_count || 0,
+        qr_click_count: 0,
+        created_at: data.created_at,
+        expires_at: data.expires_at,
+      };
+      setSelectedLink(link);
+      setLookupSlug('');
+    } catch {
+      setLookupError('Failed to look up link');
+    } finally {
+      setLookupLoading(false);
+    }
+  };
+
+  const selectFromList = (link: QRLink) => {
+    setSelectedLink(link);
+  };
 
   const toggleQrFlag = async (slug: string, currentFlag: number) => {
     setMarkingQr(slug);
@@ -171,7 +215,7 @@ const QRPage: React.FC = () => {
     }
   }, [selectedLink]);
 
-  // Selected link detail view
+  // Detail view for a selected link
   if (selectedLink) {
     return (
       <div className="space-y-6">
@@ -180,7 +224,6 @@ const QRPage: React.FC = () => {
         </button>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* QR Code */}
           <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center" ref={qrRef}>
             <QRCodeCanvas value={qrUrl} size={qrSize} bgColor="#ffffff" fgColor="#000000" level="H" includeMargin />
             <p className="mt-4 text-sm text-gray-500 font-mono">{qrUrl}</p>
@@ -196,19 +239,12 @@ const QRPage: React.FC = () => {
             </div>
 
             <div className="flex gap-3 mt-4">
-              <button onClick={downloadPNG} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm">
-                Download PNG
-              </button>
-              <button onClick={downloadPDF} className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm">
-                Download PDF
-              </button>
-              <button onClick={() => navigator.clipboard.writeText(qrUrl)} className="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-900 text-sm">
-                Copy QR URL
-              </button>
+              <button onClick={downloadPNG} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm">Download PNG</button>
+              <button onClick={downloadPDF} className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm">Download PDF</button>
+              <button onClick={() => navigator.clipboard.writeText(qrUrl)} className="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-900 text-sm">Copy QR URL</button>
             </div>
           </div>
 
-          {/* Link details */}
           <div className="space-y-4">
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-lg font-semibold mb-3">Link Details</h2>
@@ -242,17 +278,12 @@ const QRPage: React.FC = () => {
                 className={`px-4 py-2 rounded-md text-sm ${selectedLink.is_qr ? 'bg-gray-200 text-gray-700 hover:bg-gray-300' : 'bg-green-600 text-white hover:bg-green-700'} disabled:opacity-50`}>
                 {markingQr === selectedLink.slug ? '...' : selectedLink.is_qr ? 'Remove QR Flag' : 'Mark as QR'}
               </button>
-              <button onClick={() => startEdit(selectedLink)} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm">
-                Edit
-              </button>
-              <button onClick={() => setDeleteSlug(selectedLink.slug)} className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm">
-                Delete
-              </button>
+              <button onClick={() => startEdit(selectedLink)} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm">Edit</button>
+              <button onClick={() => setDeleteSlug(selectedLink.slug)} className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm">Delete</button>
             </div>
           </div>
         </div>
 
-        {/* Edit Modal */}
         {editSlug && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
@@ -272,7 +303,6 @@ const QRPage: React.FC = () => {
           </div>
         )}
 
-        {/* Delete Confirmation */}
         {deleteSlug && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
@@ -299,13 +329,30 @@ const QRPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">QR Codes</h1>
-          <p className="text-sm text-gray-600 mt-1">Links marked for QR use, with scan tracking via UTM parameters.</p>
+          <p className="text-sm text-gray-600 mt-1">Generate QR codes for any link. Scans are tracked via UTM parameters.</p>
         </div>
       </div>
 
+      {/* Generate QR for any link */}
       <div className="bg-white rounded-lg shadow p-4">
-        <input type="text" placeholder="Filter by slug or title..." value={searchSlug}
-          onChange={e => setSearchSlug(e.target.value)}
+        <h2 className="text-sm font-medium text-gray-700 mb-2">Generate QR for any link</h2>
+        <div className="flex gap-2">
+          <input type="text" placeholder="Enter a slug (e.g. tickets)" value={lookupSlug}
+            onChange={e => { setLookupSlug(e.target.value); setLookupError(''); }}
+            onKeyDown={e => e.key === 'Enter' && lookupLink()}
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" />
+          <button onClick={lookupLink} disabled={lookupLoading || !lookupSlug.trim()}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 text-sm">
+            {lookupLoading ? 'Searching...' : 'Generate QR'}
+          </button>
+        </div>
+        {lookupError && <p className="mt-2 text-sm text-red-600">{lookupError}</p>}
+      </div>
+
+      {/* Existing QR links table */}
+      <div className="bg-white rounded-lg shadow p-4">
+        <input type="text" placeholder="Filter existing QR links..." value={filterText}
+          onChange={e => setFilterText(e.target.value)}
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" />
       </div>
 
@@ -332,9 +379,9 @@ const QRPage: React.FC = () => {
 
       {!loading && !error && filteredLinks.length === 0 && (
         <div className="bg-white rounded-lg shadow p-12 text-center">
-          <h3 className="mt-2 text-lg font-medium text-gray-900">No QR links found</h3>
+          <h3 className="mt-2 text-lg font-medium text-gray-900">No QR links yet</h3>
           <p className="mt-1 text-sm text-gray-500">
-            {searchSlug ? 'No links match your filter.' : 'No links are flagged as QR codes yet. Mark links as QR from the Links page or create a new one.'}
+            Use the search above to generate a QR code for any link, or create one from the <a href="/create" className="text-green-600 hover:underline">Create Link</a> page.
           </p>
         </div>
       )}
@@ -372,7 +419,7 @@ const QRPage: React.FC = () => {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm">
                       <div className="flex gap-3">
-                        <button onClick={() => setSelectedLink(link)} className="text-green-600 hover:text-green-800 font-medium">
+                        <button onClick={() => selectFromList(link)} className="text-green-600 hover:text-green-800 font-medium">
                           QR Code
                         </button>
                         <button onClick={() => startEdit(link)} className="text-blue-600 hover:text-blue-800">Edit</button>
@@ -390,7 +437,6 @@ const QRPage: React.FC = () => {
         </div>
       )}
 
-      {/* Edit Modal */}
       {editSlug && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
@@ -410,7 +456,6 @@ const QRPage: React.FC = () => {
         </div>
       )}
 
-      {/* Delete Confirmation */}
       {deleteSlug && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">

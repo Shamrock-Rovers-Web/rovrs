@@ -10,6 +10,7 @@ interface Stats {
   qr_clicks_7d: number;
   qr_clicks_30d: number;
   top_links: Array<{ slug: string; title: string; clicks: number }>;
+  top_qr_codes: Array<{ slug: string; title: string; qr_scans: number }>;
 }
 
 function StatCard({ title, value }: { title: string; value: string | number }) {
@@ -69,29 +70,52 @@ export function DashboardStats() {
         <StatCard title="Clicks Today" value={stats.clicks_today.toLocaleString()} />
         <StatCard title="Clicks (7d)" value={stats.clicks_7d.toLocaleString()} />
         <StatCard title="Clicks (30d)" value={stats.clicks_30d.toLocaleString()} />
-        <StatCard title="QR Clicks (30d)" value={stats.qr_clicks_30d.toLocaleString()} />
+        <StatCard title="QR Scans (30d)" value={stats.qr_clicks_30d.toLocaleString()} />
       </div>
 
-      {stats.top_links && stats.top_links.length > 0 && (
-        <div className="bg-white rounded-lg shadow border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-sm font-medium text-gray-900">Top Links (7 days)</h3>
-          </div>
-          <div className="divide-y divide-gray-100">
-            {stats.top_links.map((link) => (
-              <div key={link.slug} className="px-6 py-3 flex items-center justify-between">
-                <div>
-                  <span className="text-sm font-mono text-gray-900">{link.slug}</span>
-                  {link.title && (
-                    <span className="ml-2 text-sm text-gray-500">{link.title}</span>
-                  )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {stats.top_links && stats.top_links.length > 0 && (
+          <div className="bg-white rounded-lg shadow border border-gray-200">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-sm font-medium text-gray-900">Top Links (7 days)</h3>
+            </div>
+            <div className="divide-y divide-gray-100">
+              {stats.top_links.map((link) => (
+                <div key={link.slug} className="px-6 py-3 flex items-center justify-between">
+                  <div>
+                    <span className="text-sm font-mono text-gray-900">{link.slug}</span>
+                    {link.title && (
+                      <span className="ml-2 text-sm text-gray-500">{link.title}</span>
+                    )}
+                  </div>
+                  <span className="text-sm font-medium text-gray-700">{link.clicks.toLocaleString()} clicks</span>
                 </div>
-                <span className="text-sm font-medium text-gray-700">{link.clicks.toLocaleString()} clicks</span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {stats.top_qr_codes && stats.top_qr_codes.length > 0 && (
+          <div className="bg-white rounded-lg shadow border border-gray-200">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-sm font-medium text-gray-900">Top QR Codes (30 days)</h3>
+            </div>
+            <div className="divide-y divide-gray-100">
+              {stats.top_qr_codes.map((link) => (
+                <div key={link.slug} className="px-6 py-3 flex items-center justify-between">
+                  <div>
+                    <span className="text-sm font-mono text-gray-900">{link.slug}</span>
+                    {link.title && (
+                      <span className="ml-2 text-sm text-gray-500">{link.title}</span>
+                    )}
+                  </div>
+                  <span className="text-sm font-medium text-green-700">{link.qr_scans.toLocaleString()} scans</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
