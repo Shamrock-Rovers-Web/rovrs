@@ -38,7 +38,7 @@ export default {
       const { link } = await lookupLink(env.DB, pathname);
 
       if (link) {
-        try { await enqueueClickEvent(env.CLICK_QUEUE ?? null, env.DB, pathname, request); } catch {}
+        try { await enqueueClickEvent(env.CLICK_QUEUE ?? null, env.DB, pathname, request); } catch (e) { console.error('Click tracking error:', e); }
 
         if ((link as any).is_offsite_ticket) {
           const destUrl = new URL(link.destination_url || link.destination);

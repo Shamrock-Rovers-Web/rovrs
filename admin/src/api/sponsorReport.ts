@@ -31,7 +31,7 @@ interface SponsorReportResponse {
 
 const API_BASE = window.location.origin === 'http://localhost:3000'
   ? 'http://localhost:8787'
-  : 'https://admin.rov.rs';
+  : '';
 
 // Fetch all unique sponsors from the links table
 export const fetchUniqueSponsors = async (): Promise<string[]> => {

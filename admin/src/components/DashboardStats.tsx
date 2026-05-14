@@ -1,3 +1,6 @@
+import { useState, useEffect } from 'react';
+import { getLinks } from '../api/client';
+
 interface StatCardProps {
   title: string;
   value: number | string;
@@ -36,38 +39,76 @@ function StatCard({ title, value, change, icon }: StatCardProps) {
 }
 
 export function DashboardStats() {
+  const [totalLinks, setTotalLinks] = useState<number>(0);
+  const [activeLinks, setActiveLinks] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        // Get total links
+        const totalResponse = await getLinks({ limit: 1 });
+        setTotalLinks(totalResponse.pagination.total);
+
+        // Get active links
+        const activeResponse = await getLinks({ limit: 1, status: 'active' });
+        setActiveLinks(activeResponse.pagination.total);
+      } catch (error) {
+        console.error('Failed to fetch stats:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold text-gray-900">Statistics</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="bg-white rounded-lg shadow p-6 border border-gray-200 animate-pulse">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-6 w-6 bg-gray-300 rounded"></div>
+                <div className="h-4 w-24 bg-gray-300 rounded"></div>
+              </div>
+              <div className="h-8 w-20 bg-gray-300 rounded mb-2"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold text-gray-900">Statistics</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <StatCard
           title="Total Links"
-          value="1,234"
-          change={{ type: 'positive', value: 12, label: 'from last week' }}
+          value={totalLinks.toLocaleString()}
           icon="📊"
         />
         <StatCard
           title="Active Links"
-          value="892"
-          change={{ type: 'positive', value: 5, label: 'from last week' }}
+          value={activeLinks.toLocaleString()}
           icon="✅"
         />
         <StatCard
           title="Clicks Today"
-          value="5,678"
-          change={{ type: 'positive', value: 18, label: 'from yesterday' }}
+          value="—"
           icon="👆"
         />
         <StatCard
           title="Clicks (7d)"
-          value="45,678"
-          change={{ type: 'neutral', value: 0, label: 'no change' }}
+          value="—"
           icon="📈"
         />
         <StatCard
           title="Clicks (30d)"
-          value="234,567"
-          change={{ type: 'positive', value: 8, label: 'from last month' }}
+          value="—"
           icon="📊"
         />
       </div>

@@ -106,7 +106,7 @@ describe('MatchLink Component', () => {
         ok: true,
         json: () => Promise.resolve({
           slug: 'derry-city',
-          shortUrl: 'https://rov.rs/derry-city'
+          shortUrl: 'http://localhost:3000/derry-city'
         })
       })
     ) as any;
@@ -128,13 +128,13 @@ describe('MatchLink Component', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Link created successfully!/i)).toBeInTheDocument();
-      expect(screen.getByText(/Short URL: https:\/\/rov.rs\/derry-city/i)).toBeInTheDocument();
+      expect(screen.getByText(/Short URL: http:\/\/localhost:3000\/derry-city/i)).toBeInTheDocument();
       expect(screen.getByText(/Slug: derry-city/i)).toBeInTheDocument();
     });
 
     // Verify fetch was called with correct data
     expect(fetch).toHaveBeenCalledWith(
-      'http://localhost:8787/api/links',
+      '/api/links',
       expect.objectContaining({
         method: 'POST',
         body: expect.stringContaining('"channel":"match"')

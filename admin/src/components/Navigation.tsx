@@ -1,15 +1,18 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useResponsive } from '../hooks/useResponsive'
-import { Home, Link as LinkIcon, BarChart3, QrCode, Users, Settings, Menu, X } from 'lucide-react'
+import { Home, Link as LinkIcon, Plus, Zap, Calendar, QrCode, Users, Download, Settings, Menu, X } from 'lucide-react'
 import { MobileMenu } from './MobileMenu'
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: Home },
+  { name: 'Dashboard', href: '/dashboard', icon: Home },
   { name: 'Links', href: '/links', icon: LinkIcon },
-  { name: 'Analytics', href: '/analytics', icon: BarChart3 },
+  { name: 'Create Link', href: '/create', icon: Plus },
+  { name: 'Quick Create', href: '/quick-create', icon: Zap },
+  { name: 'Match Link', href: '/match-link', icon: Calendar },
   { name: 'QR Codes', href: '/qr', icon: QrCode },
   { name: 'Sponsors', href: '/sponsors', icon: Users },
+  { name: 'Import/Export', href: '/import-export', icon: Download },
   { name: 'Settings', href: '/settings', icon: Settings },
 ]
 
@@ -35,7 +38,9 @@ export function Navigation() {
               <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
                 {navigation.map((item) => {
                   const Icon = item.icon
-                  const isActive = location.pathname === item.href
+                  const isActive = item.href === '/dashboard'
+                    ? location.pathname === '/' || location.pathname === '/dashboard'
+                    : location.pathname === item.href
 
                   return (
                     <Link
@@ -76,7 +81,9 @@ export function Navigation() {
           <div className="pt-2 pb-3 space-y-1">
             {navigation.map((item) => {
               const Icon = item.icon
-              const isActive = location.pathname === item.href
+              const isActive = item.href === '/dashboard'
+                ? location.pathname === '/' || location.pathname === '/dashboard'
+                : location.pathname === item.href
 
               return (
                 <Link

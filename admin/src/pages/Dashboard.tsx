@@ -12,9 +12,10 @@ export default function Dashboard() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    // Simulate API refresh
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Force a re-render by updating the timestamp
     setLastRefresh(new Date());
+    // Add a small delay to show loading state
+    await new Promise(resolve => setTimeout(resolve, 500));
     setRefreshing(false);
   };
 

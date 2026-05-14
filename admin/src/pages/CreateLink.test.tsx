@@ -197,7 +197,7 @@ describe('CreateLink', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Link Created Successfully!/i)).toBeInTheDocument();
-      expect(screen.getByText(/https:\/\/admin.rov.rs\/test-slug/i)).toBeInTheDocument();
+      expect(screen.getByText(/http:\/\/localhost:3000\/test-slug/i)).toBeInTheDocument();
     });
   });
 
@@ -228,7 +228,7 @@ describe('CreateLink', () => {
     await waitFor(() => {
       const copyButton = screen.getByRole('button', { name: /Copy/i });
       fireEvent.click(copyButton);
-      expect(mockWriteText).toHaveBeenCalledWith('https://admin.rov.rs/test-slug');
+      expect(mockWriteText).toHaveBeenCalledWith('http://localhost:3000/test-slug');
     });
   });
 

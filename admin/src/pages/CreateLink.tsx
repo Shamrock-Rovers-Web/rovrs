@@ -91,7 +91,7 @@ interface FormState extends LinkCreateInput {
 const CreateLink: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const baseUrl = window.location.origin === 'http://localhost:3000' ? 'http://localhost:8787' : 'https://admin.rov.rs';
+  const baseUrl = '';
 
   const [formData, setFormData] = useState<FormState>({
     slug: '',
@@ -447,19 +447,16 @@ const CreateLink: React.FC = () => {
 
                 <div>
                   <label htmlFor="campaign" className="block text-sm font-medium text-gray-700">
-                    Campaign
+                    Campaign (optional)
                   </label>
-                  <select
+                  <input
+                    type="text"
                     id="campaign"
                     value={formData.campaign || ''}
                     onChange={(e) => handleInputChange('campaign', e.target.value || undefined)}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                  >
-                    <option value="">Select campaign</option>
-                    {CAMPAIGNS.map((campaign) => (
-                      <option key={campaign} value={campaign}>{campaign}</option>
-                    ))}
-                  </select>
+                    placeholder="e.g., League 2026, Cup, Friendly"
+                  />
                 </div>
 
                 <div>

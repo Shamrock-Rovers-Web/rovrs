@@ -20,7 +20,7 @@ const QRPage: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [expiryWarning, setExpiryWarning] = useState(false);
 
-  const baseUrl = window.location.origin === 'http://localhost:3000' ? 'http://localhost:8787' : 'https://rov.rs';
+  const baseUrl = window.location.origin === 'http://localhost:3000' ? 'http://localhost:8787' : '';
 
   const searchLink = async () => {
     if (!searchSlug.trim()) return;
@@ -31,7 +31,8 @@ const QRPage: React.FC = () => {
     try {
       const response = await fetch(`/api/links/${searchSlug}`);
       if (response.ok) {
-        const data = await response.json();
+        const result = await response.json();
+        const data = result.data || result;
         setLink(data);
 
         // Check for expiry warning
@@ -66,7 +67,7 @@ const QRPage: React.FC = () => {
   const copyToClipboard = async () => {
     if (!link) return;
 
-    const fullUrl = `${baseUrl}/${link.slug}`;
+    const fullUrl = `https://rov.rs/${link.slug}`;
     try {
       await navigator.clipboard.writeText(fullUrl);
       alert('URL copied to clipboard!');

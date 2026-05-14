@@ -41,7 +41,7 @@ interface QuickCreateState {
 
 const QuickCreate: React.FC = () => {
   const navigate = useNavigate();
-  const baseUrl = window.location.origin === 'http://localhost:3000' ? 'http://localhost:8787' : 'https://admin.rov.rs';
+  const baseUrl = '';
 
   const [formData, setFormData] = useState<QuickCreateState>({
     destination_url: '',

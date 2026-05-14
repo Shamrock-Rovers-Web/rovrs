@@ -68,7 +68,7 @@ interface FormState extends LinkCreateInput {
 
 const MatchLink: React.FC = () => {
   const navigate = useNavigate();
-  const baseUrl = window.location.origin === 'http://localhost:3000' ? 'http://localhost:8787' : 'https://admin.rov.rs';
+  const baseUrl = '';
 
   const [formData, setFormData] = useState<FormState>({
     slug: '',
@@ -208,7 +208,7 @@ const MatchLink: React.FC = () => {
           isSuccess: true,
           createdLink: {
             slug: data.slug,
-            shortUrl: `https://rov.rs/${data.slug}`
+            shortUrl: `${baseUrl}/${data.slug}`
           }
         }));
       } else {
@@ -339,9 +339,11 @@ const MatchLink: React.FC = () => {
               className={`w-full px-3 py-2 border ${formData.errors.competition ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500`}
             >
               <option value="">Select competition...</option>
-              <option value="premier-league">Premier Division</option>
+              <option value="premier-division">Premier Division</option>
               <option value="fai-cup">FAI Cup</option>
-              <option value="setanta-cup">Setanta Cup</option>
+              <option value="champions-league">Champions League</option>
+              <option value="europa-league">Europa League</option>
+              <option value="conference-league">Conference League</option>
               <option value="friendly">Friendly</option>
               <option value="other">Other</option>
             </select>
