@@ -254,8 +254,9 @@ const CreateLink: React.FC = () => {
     if (!formData.createdLink) return;
 
     try {
+      const qrUrl = `${formData.createdLink.shortUrl}?utm_source=qr&utm_medium=qr-code`;
       const canvas = document.createElement('canvas');
-      await QRCode.toCanvas(canvas, formData.createdLink.shortUrl, {
+      await QRCode.toCanvas(canvas, qrUrl, {
         width: 400,
         margin: 2,
       });

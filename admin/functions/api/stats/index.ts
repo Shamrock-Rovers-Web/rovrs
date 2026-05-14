@@ -34,19 +34,13 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
         "SELECT COUNT(*) as total FROM click_events WHERE clicked_at >= datetime('now', '-30 days')"
       ).first<{ total: number }>(),
       context.env.DB.prepare(
-        `SELECT COUNT(*) as total FROM click_events ce
-         JOIN links l ON ce.link_id = l.id
-         WHERE l.is_qr = 1 AND ce.clicked_at >= datetime('now', '-1 day')`
+        "SELECT COUNT(*) as total FROM click_events WHERE utm_source = 'qr' AND clicked_at >= datetime('now', '-1 day')"
       ).first<{ total: number }>(),
       context.env.DB.prepare(
-        `SELECT COUNT(*) as total FROM click_events ce
-         JOIN links l ON ce.link_id = l.id
-         WHERE l.is_qr = 1 AND ce.clicked_at >= datetime('now', '-7 days')`
+        "SELECT COUNT(*) as total FROM click_events WHERE utm_source = 'qr' AND clicked_at >= datetime('now', '-7 days')"
       ).first<{ total: number }>(),
       context.env.DB.prepare(
-        `SELECT COUNT(*) as total FROM click_events ce
-         JOIN links l ON ce.link_id = l.id
-         WHERE l.is_qr = 1 AND ce.clicked_at >= datetime('now', '-30 days')`
+        "SELECT COUNT(*) as total FROM click_events WHERE utm_source = 'qr' AND clicked_at >= datetime('now', '-30 days')"
       ).first<{ total: number }>(),
       context.env.DB.prepare(
         `SELECT l.slug, l.title, COUNT(ce.id) as clicks
