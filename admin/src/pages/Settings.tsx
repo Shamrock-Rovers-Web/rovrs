@@ -1,87 +1,43 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
-import UserList from '../components/UserList';
 import SlugBlocklistEditor from '../components/SlugBlocklistEditor';
 import ProtectedSlugsEditor from '../components/ProtectedSlugsEditor';
 
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
 const Settings = () => {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {
-    try {
-      const response = await api.users.list();
-      if (response.success) {
-        setUsers(response.data);
-      }
-    } catch (error) {
-      console.error('Error fetching users:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Settings</h1>
+      <h1 className="text-3xl font-bold mb-2">Settings</h1>
+      <p className="text-gray-600 mb-8">Manage blocked slugs, protected paths, and system configuration.</p>
 
-      {/* Mobile Tabs */}
-      <div className="sm:hidden mb-6">
-        <div className="flex space-x-1 border-b border-gray-200">
-          <button className="flex-1 py-2 px-4 text-sm font-medium text-center border-b-2 border-green-500 text-green-600">
-            Users
-          </button>
-          <button className="flex-1 py-2 px-4 text-sm font-medium text-center border-b-2 border-transparent text-gray-500 hover:text-gray-700">
-            Blocklist
-          </button>
-          <button className="flex-1 py-2 px-4 text-sm font-medium text-center border-b-2 border-transparent text-gray-500 hover:text-gray-700">
-            Protected
-          </button>
-        </div>
+      <div className="mb-8 bg-white rounded-lg shadow-md p-6">
+        <h2 className="text-xl font-semibold mb-2">Authentication</h2>
+        <p className="text-gray-600">
+          Admin access is managed through <strong>Cloudflare Access</strong>. All users with access to
+          admin.rov.rs are authenticated via Cloudflare's zero-trust login — no separate user accounts
+          or passwords are needed. To add or remove users, update the Cloudflare Access policy in the
+          Cloudflare dashboard.
+        </p>
       </div>
 
       <div className="space-y-8">
-        {/* User Management Section */}
-        <section className="block sm:hidden">
-          <h2 className="text-xl font-semibold mb-4">User Management</h2>
-          <UserList
-            users={users}
-            onUpdateUser={fetchUsers}
-            currentEmail={localStorage.getItem('userEmail') || ''}
-          />
-        </section>
-
-        <section className="hidden sm:block">
-          <h2 className="text-2xl font-semibold mb-4">User Management</h2>
-          <UserList
-            users={users}
-            onUpdateUser={fetchUsers}
-            currentEmail={localStorage.getItem('userEmail') || ''}
-          />
-        </section>
-
-        {/* Slug Blocklist Section */}
-        <section className="hidden sm:block">
-          <h2 className="text-2xl font-semibold mb-4">Slug Blocklist</h2>
+        <section>
+          <h2 className="text-2xl font-semibold mb-2">Slug Blocklist</h2>
+          <p className="text-gray-600 mb-4">
+            Blocked terms that cannot be used as link slugs. Useful for preventing abuse
+            (e.g. blocking <code className="bg-gray-100 px-1 rounded">javascript:</code> URLs).
+          </p>
           <SlugBlocklistEditor />
         </section>
 
-        {/* Protected Slugs Section */}
-        <section className="hidden sm:block">
-          <h2 className="text-2xl font-semibold mb-4">Protected Slugs</h2>
+        <section>
+          <h2 className="text-2xl font-semibold mb-2">Protected Slugs</h2>
+          <p className="text-gray-600 mb-4">
+            These slugs are reserved and cannot be created as short links. Core slugs
+            like <code className="bg-gray-100 px-1 rounded">tickets</code>,{' '}
+            <code className="bg-gray-100 px-1 rounded">shop</code>, and{' '}
+            <code className="bg-gray-100 px-1 rounded">health</code> are system paths
+            used by the redirect worker and admin API. You can also add custom protected slugs.
+          </p>
           <ProtectedSlugsEditor />
         </section>
       </div>
