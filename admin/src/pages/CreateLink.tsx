@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import QRCode from 'qrcode';
 
 const CHANNELS = ['Tickets', 'Instagram', 'Facebook', 'X/Twitter', 'TikTok', 'LinkedIn', 'QR code', 'Email', 'Sponsor', 'Matchday', 'Other'];
 
@@ -253,16 +254,16 @@ const CreateLink: React.FC = () => {
     if (!formData.createdLink) return;
 
     try {
-      const response = await fetch(`${baseUrl}/api/links/${formData.createdLink.slug}/qr.png`);
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `rovrs-qrcode-${formData.createdLink.slug}.png`;
-        link.click();
-        URL.revokeObjectURL(url);
-      }
+      const canvas = document.createElement('canvas');
+      await QRCode.toCanvas(canvas, formData.createdLink.shortUrl, {
+        width: 400,
+        margin: 2,
+      });
+      const url = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `rovrs-qrcode-${formData.createdLink.slug}.png`;
+      link.click();
     } catch (error) {
       alert('Failed to generate QR code');
     }
