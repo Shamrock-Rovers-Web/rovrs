@@ -59,8 +59,8 @@ cd packages/redirect-worker && npx wrangler deploy
 # Deploy queue consumer
 cd packages/queue-consumer && npx wrangler deploy
 
-# Build and deploy admin
-cd admin && npx vite build && npx wrangler pages deploy dist --project-name rovrs-admin --branch main
+# Build and deploy admin (handles D1 binding + functions)
+bash deploy-admin.sh
 ```
 
 Migrations are applied via:
