@@ -109,12 +109,13 @@ const QuickCreate: React.FC = () => {
 
       if (response.ok) {
         const result = await response.json();
+        const link = result.data || result;
         setFormData(prev => ({
           ...prev,
           isSuccess: true,
           createdLink: {
-            slug: result.slug,
-            shortUrl: `${baseUrl}/${result.slug}`
+            slug: link.slug,
+            shortUrl: `https://rov.rs/${link.slug}`
           },
           isSubmitting: false
         }));

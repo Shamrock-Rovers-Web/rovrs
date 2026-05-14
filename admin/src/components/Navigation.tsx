@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useResponsive } from '../hooks/useResponsive'
-import { Home, Link as LinkIcon, Plus, Zap, Calendar, QrCode, Users, Download, Settings, Menu, X } from 'lucide-react'
+import { Home, Link as LinkIcon, Plus, Zap, Calendar, QrCode, Settings, Menu, X } from 'lucide-react'
 import { MobileMenu } from './MobileMenu'
 
 const navigation = [
@@ -11,8 +11,6 @@ const navigation = [
   { name: 'Quick Create', href: '/quick-create', icon: Zap },
   { name: 'Match Link', href: '/match-link', icon: Calendar },
   { name: 'QR Codes', href: '/qr', icon: QrCode },
-  { name: 'Sponsors', href: '/sponsors', icon: Users },
-  { name: 'Import/Export', href: '/import-export', icon: Download },
   { name: 'Settings', href: '/settings', icon: Settings },
 ]
 

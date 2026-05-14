@@ -202,13 +202,14 @@ const MatchLink: React.FC = () => {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const result = await response.json();
+        const link = result.data || result;
         setFormData(prev => ({
           ...prev,
           isSuccess: true,
           createdLink: {
-            slug: data.slug,
-            shortUrl: `${baseUrl}/${data.slug}`
+            slug: link.slug,
+            shortUrl: `https://rov.rs/${link.slug}`
           }
         }));
       } else {
