@@ -83,6 +83,10 @@ npx wrangler d1 execute rovrs-db --file=migrations/0001_initial_schema.sql
 |--------|------|-------------|
 | GET/POST | `/api/links` | List/create links |
 | GET/PATCH/DELETE | `/api/links/{slug}` | Read/update/delete |
+| POST | `/api/links/{slug}/restore` | Restore deleted link |
+| POST | `/api/links/{slug}/stats` | Per-link click analytics |
+| GET | `/api/stats` | Dashboard stats (clicks, QR scans, top links) |
+| GET | `/api/qr` | List QR-flagged links with scan counts |
 | GET | `/api/export/csv` | Export links as CSV |
 | POST | `/api/import/csv` | Import links from CSV |
 | GET | `/api/reports/sponsors` | Sponsor reporting |
@@ -94,6 +98,7 @@ npx wrangler d1 execute rovrs-db --file=migrations/0001_initial_schema.sql
 - Redirect: 302 default, 301 for stable evergreen links (`tickets`, `shop`, `fixtures`, `members`, `academy`, `women`)
 - Expired/unknown/paused links redirect to ticket page
 - Offsite ticket links show interstitial preview
+- QR codes encode URLs with `?utm_source=qr&utm_medium=qr-code` for scan tracking
 - Reserved paths: `/admin`, `/api`, `/health`, `/robots.txt`, etc.
 - Blocked URL protocols: `javascript:`, `data:`, `file:`, `ftp:`, localhost
 
