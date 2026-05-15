@@ -17,10 +17,15 @@ The admin dashboard is at **admin.rov.rs** (you'll log in through Cloudflare —
 
 ### Creating a link
 1. Go to **Create Link**
-2. Enter a **slug** (the short word after rov.rs, e.g. `vs-bohs` → `rov.rs/vs-bohs`)
-3. Paste the **destination URL** (where it should go)
-4. Add a title, channel (Instagram, Email, QR code etc.), and campaign if relevant
-5. Hit Create — your link is live immediately
+2. Enter a **slug** — this is the short word after rov.rs (e.g. `vs-bohs` gives you `rov.rs/vs-bohs`). Lowercase letters, numbers, and hyphens only.
+3. Paste the **destination URL** — where people end up when they click or scan
+4. That's it — everything else is optional. You can add a title, channel, campaign, sponsor, match details, expiry date etc. if you want, but you don't have to.
+5. Hit **Create Link** — it's live immediately
+
+### Copying your link
+After you create a link you'll see the short URL and a **Copy** button. You can also:
+- Go to **Links** at any time and hit **Copy** next to any link — this copies the full `rov.rs/...` URL to your clipboard
+- From there you can paste it straight into Instagram, X, an email, or wherever you need it
 
 ### Quick create
 If you just need a fast link with no extras, use **Quick Create** — slug, URL, done.
